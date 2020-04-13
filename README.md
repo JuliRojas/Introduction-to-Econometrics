@@ -13,7 +13,7 @@ El equipo se encuentra conformado por:
 
 ## Objetivo general
 
-El curso se enfoca en abordar técnicas econométricas en una muestra de corte transversal. Para ello, el conocimiento teórico econométrico que adquiera el estudiante se reforzará de forma paralela a través del conocimiento en el manejo de los microdatos que vienen de la *E*ncuesta *N*acional de *H*ogares (ENH), del *D*epartamento *A*dministrativo *N*acional de *E*stadística (DANE).
+El curso se enfoca en abordar técnicas econométricas en una muestra de corte transversal. Para ello, el conocimiento teórico econométrico que adquiera el estudiante se reforzará de forma paralela a través del conocimiento en el manejo de los microdatos que vienen de la **E**ncuesta **N**acional de **H**ogares (ENH), del **D**epartamento **A**dministrativo **N**acional de **E**stadística (DANE).
 
 ## Objetivos específicos
 
@@ -28,7 +28,7 @@ El curso se enfoca en abordar técnicas econométricas en una muestra de corte t
 ## Evaluación
 
 Para facilitar el seguimiento del proceso de aprendizaje, se contará con los siguientes recursos:
-- **Taller y quices**: Comprensión de conceptos desarrollados en clase.
+- **Talleres y quices**: Comprensión de conceptos desarrollados en clase.
 - **Trabajo semestral**: Aplicación de los conceptos teóricos abordados en clase utilizando los microdatos de la ENH del DANE. Es la principal actividad de trabajo autónomo que abarca el componente aplicado (empírico) del curso.
 - **Dos parciales y un examen final**: Principal actividad de evaluación del contenido teórico y práctico del curso.
 
@@ -44,9 +44,14 @@ Para facilitar el seguimiento del proceso de aprendizaje, se contará con los si
 
 ## Proceso de evaluación
 
+* Dos parciales y examen final:
 - [ ] Primer parcial.
 - [ ] Segundo parcial.
 - [ ] Examen final.
+
+* Trabajo semestral:
 - [ ] Trabajo semestral.
+
+* Talleres y quices:
 - [X] Taller 1.
 - [X] Taller 2.
