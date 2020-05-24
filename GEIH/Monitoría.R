@@ -23,7 +23,7 @@ library(gdata)
 library(stargazer)
 
 # Bases de datos ----------------------------------------------------------
-setwd("C:/Users/Julián Rojas/Desktop/Sueñito/Econometría/Monitoria/GEIH/Ejemplo - Profesor/2010 - Enero (CSV)")
+setwd("C:/Users/judro/OneDrive/Documentos/GitHub/Introduction-to-Econometrics/GEIH")
 CaracterísticasGenerales <- read_delim("Area_Caracteristicas_Generales_Personas.csv", 
                                        ";", escape_double = FALSE, trim_ws = TRUE)
 CaracterísticasOcupados <- read_delim("Area_Ocupados.csv", ";", 
@@ -97,11 +97,11 @@ colnames(Datos) <- c('Trabajo semanal', 'Ingreso mensual',
                      'Edad', 'Escolaridad', 'Sexo')
 
 # Hay dos opciones para trabajar con el sexo, a saber:
-# 1| Factores:
-Datos %>% mutate(Sexo = case_when(Sexo == 1 ~ 'Hombre', Sexo == 2 ~ 'Mujer'),
-                 Sexo = factor(Sexo, levels = c('Hombre', 'Mujer')))
-# 2| Binarias: Trabajemos con esta.
-Datos = Datos %>% mutate(Sexo = case_when(Sexo == 1 ~ 1, Sexo == 2 ~ 0))
+# 1| Factores: Trabajemos con esta.
+Datos = Datos %>% mutate(Sexo = case_when(Sexo == 1 ~ 'Hombre', Sexo == 2 ~ 'Mujer'),
+                         Sexo = factor(Sexo, levels = c('Hombre', 'Mujer')))
+# 2| Binarias: 
+#    Datos = Datos %>% mutate(Sexo = case_when(Sexo == 1 ~ 1, Sexo == 2 ~ 0))
 
 # Se procede a generar las variables de salario por hora y experiencia potencial.
 Datos = Datos %>%
@@ -122,6 +122,9 @@ Datos = Datos %>%
 sum(is.na(Datos$`Ln(Salario por hora)`))
 length(Datos$`Ln(Salario por hora)`) - sum(is.na(Datos$`Ln(Salario por hora)`))
 
+# Se desecha los valores perdido:
+Datos = as.data.frame(drop_na(Datos))
+
 # 2| Regresión ------------------------------------------------------------
 #    Ya con todas las variables necesarias creadas, se procede a realizar la
 #    estimación.
@@ -138,10 +141,8 @@ summary(RegresiónDiscriminación)
 
 # 2.1| Presentación -------------------------------------------------------
 #      Un poco de estadística descriptiva podría ser:
-Datos = as.data.frame(Datos)
 stargazer(Datos, type = "text", title = "Estadística descriptiva", digits = 2)
 
 # Así mismo, las diferencias entre las regresiones:
 stargazer(RegresiónOriginal, RegresiónDiscriminación, type = "text",
           title = 'Comparación de las regresiones', digits = 2)
-

@@ -1,0 +1,290 @@
+# ------------------------------- Script ----------------------------------
+#                     Universidad Nacional de Colombia
+#                     Facultad de Ciencias Económicas
+#                              Econometría I
+# ------------------------------ Monitoria --------------------------------
+# 1. Hernando Hernandez Lasso.
+# 2. Julián David Rojas Aguilar.
+
+# ---------------------------- Instrucciones ------------------------------
+# 1. Cada línea en el script se ejecuta con Ctrl + Enter o con el botón run de 
+#    esta ventana.
+# 2. Todo el texto que se encuentre después del numeral (#) es un comentario.
+# 3. A la hora de ejecutar cada línea, R no tendrá en cuenta los comentarios.
+# 4. Todos los resultados de comandos ejecutados se muestran en la consola.
+# 5. Es posible ejecutar comandos directamente desde la consola con la tecla 
+#    Enter.
+
+# Preparación -------------------------------------------------------------
+rm(list = ls())
+library(readr)       # Importación del .csv.
+library(tidyverse)   # Manipulación de datos.
+library(lmtest)      # Pruebas sobre modelos lineales.
+library(gdata)       # 
+library(stargazer)   # Tablas con los resultados.
+library(GGally)      # Gráficos de distribuciones
+library(corrplot)    # y correlaciones.
+library(psych)       # Distribución de las variables.
+library(car)         # Permite hacer las pruebas de hipótesis sobre un conjunto de parámetros.
+library(strucchange) # Permite comprobar la existencia de un cambio estructural.
+library(reshape2)    # Para acomodar los datos a ggplot en el BoxPlot.
+library(outliers)    # Para detectar valores atípicos.
+library(sandwich)    # Coeficientes robustos a heterocedasticidad.
+
+# Bases de datos ----------------------------------------------------------
+# https://www.basketball-reference.com/about/glossary.html
+setwd("C:/Users/judro/OneDrive/Documentos/GitHub/Introduction-to-Econometrics/Sesión 06")
+NBA <- read.csv("NBA.csv", header = T, sep = ",", stringsAsFactors = T)
+NBA <- NBA %>%
+  add_column(ID = 1:dim(NBA)[1],
+             .before = 1)
+
+# Las variables seleccionadas son:
+# 1| Salary: Salario recibido entre 2017-2018.
+# 2|    Age: Edad.
+# 3|      G: Juegos.
+# 4|     MP: Minutos jugados.
+# 5|    PER: Calificación de eficiencia del jugador.
+# 6|   TOV.: Porcentaje de rotación.
+# Una rotación ocurre cuando un equipo pierde la posesión del balón contra el 
+# equipo contrario.
+
+NBA           <- select(NBA, c("ID", "Salary", "Age", "G", "MP", "PER", "TOV."))
+colnames(NBA) <- c("ID", "Salario", "Edad", "Juegos", "Minutos jugados",
+                   "Eficiencia", "Rotación")
+colSums(is.na.data.frame(NBA))
+Relleno                           <- median(NBA$Rotación, na.rm = T)
+NBA$Rotación[is.na(NBA$Rotación)] <- Relleno
+colSums(is.na.data.frame(NBA))
+glimpse(NBA)
+
+# 1| Regresión ------------------------------------------------------------
+# 1.1| Creación de variables ----------------------------------------------
+`Promedio minutos`          <- mean(NBA$`Minutos jugados`)
+`Promedio faltas`           <- mean(NBA$Rotación)
+NBA$`Índice de confianza`   <- as.factor(ifelse(NBA$`Minutos jugados` >= `Promedio minutos`, "Sí", "No"))
+NBA$`Índice de agresividad` <- as.factor(ifelse(NBA$Rotación >= `Promedio faltas`, "Sí", "No"))
+
+# ¿Cómo son los valores atípicos?
+Cajas = melt(NBA, id = c('ID')) 
+Cajas = Cajas %>% filter(variable %in% c("Salario", "Edad", "Juegos", 
+                                         "Minutos jugados", "Eficiencia", 
+                                         "Rotación"))
+Cajas$value <- as.numeric(Cajas$value)
+ggplot(data = Cajas, aes(x = factor(1), y = value)) +
+  geom_boxplot() + 
+  facet_wrap(. ~ variable, scales = "free") +
+  labs(title = "Gráfica de caja por variable", 
+       subtitle = "Visualización de datos atípicos",
+       x = "Variables",
+       y = "Valores") + 
+  theme_bw() +
+  theme(plot.title = element_text(size = 12, face = "bold"),
+        plot.subtitle = element_text(face = 'italic'),
+        axis.text.x=element_blank(),
+        legend.position = 'bottom',
+        legend.box.background = element_rect(),
+        legend.box.margin = margin(6, 6, 6, 6))
+
+# ¿Es importante la agresividad del jugador?
+ggplot(NBA, aes(x = `Minutos jugados`, 
+                y = Salario, 
+                colour = `Índice de agresividad`)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  labs(title = "Modelo de regresión", 
+       subtitle = "Comparación por su agresividad",
+       x = "Minutos jugados",
+       y = "Salario") + 
+  theme_bw() +
+  theme(plot.title = element_text(size = 12, face = "bold"),
+        plot.subtitle = element_text(face = 'italic'),
+        axis.text.x=element_blank(),
+        legend.position = 'bottom',
+        legend.box.background = element_rect(),
+        legend.box.margin = margin(6, 6, 6, 6))
+
+# ¿Habrá algún componente con comportamiento cuadrático?
+ggplot(NBA, aes(x = Juegos, y = `Minutos jugados`)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2)) +
+  labs(title = "Modelo de regresión", 
+       subtitle = "Relación cuadrática",
+       x = "Número de partidos",
+       y = "Minutos jugados") + 
+  theme_bw() +
+  theme(plot.title = element_text(size = 12, face = "bold"),
+        plot.subtitle = element_text(face = 'italic'),
+        axis.text.x=element_blank(),
+        legend.position = 'bottom',
+        legend.box.background = element_rect(),
+        legend.box.margin = margin(6, 6, 6, 6))
+
+# 1.2| Modelación ---------------------------------------------------------
+# 1.2.1| Con datos atípicos -----------------------------------------------
+NBA             <- select(NBA, -c("ID"))
+`Primer modelo` <- lm(formula = Salario ~ ., data = NBA)
+summary(`Primer modelo`)
+
+par(mfrow = c(3, 2))                # Entorno recomendado para el diagnóstico.
+plot(`Primer modelo`, which = 1:6)
+par(mfrow = c(1, 1))                # Se regresa al entorno típico.
+
+# 1.2.2| Con datos atípicos -----------------------------------------------
+# Implementamos el algoritmo: Basado en z-score.
+OS.Salario                  <- scores(NBA$Salario)
+OS.Edad                     <- scores(NBA$Edad)
+OS.Juegos                   <- scores(NBA$Juegos)
+`OS.Minutos jugados`        <- scores(NBA$`Minutos jugados`)
+OS.Eficiencia               <- scores(NBA$Eficiencia)
+OS.Rotación                 <- scores(NBA$Rotación)
+`OS.Índice de confianza`    <- scores(NBA$`Índice de confianza`)   # No tiene sentido calcularlo.
+`OS.Índice de agresividad`  <- scores(NBA$`Índice de agresividad`) # No tiene sentido calcularlo.
+
+NBA$Atípico <- OS.Salario > 3 | OS.Salario < -3 | 
+  OS.Edad > 3 | OS.Edad < -3 | 
+  OS.Juegos > 3 | OS.Juegos < -3 | 
+  `OS.Minutos jugados` > 3 | `OS.Minutos jugados` < -3 |
+  OS.Eficiencia > 3 | OS.Eficiencia < -3 | 
+  OS.Rotación > 3 | OS.Rotación < -3
+NBA = NBA %>% filter(Atípico == F)
+
+# Corremos la regresión:
+NBA             <- select(NBA, -c("Atípico"))
+`Segundo modelo` <- lm(formula = Salario ~ ., data = NBA)
+summary(`Segundo modelo`)
+
+par(mfrow = c(3, 2))                # Entorno recomendado para el diagnóstico.
+plot(`Segundo modelo`, which = 1:6)
+par(mfrow = c(1, 1))                # Se regresa al entorno típico.
+
+# Supuestos sobre el modelo -----------------------------------------------
+# 2| Multicolinealidad ----------------------------------------------------
+Multicolinealidad <- NBA[ , 2:6]
+ggpairs(Multicolinealidad)
+corrplot.mixed(cor(Multicolinealidad), 
+               tl.col = "black", 
+               upper = "square", 
+               tl.pos = "lt", 
+               diag = "l")
+vif(`Primer modelo`)
+
+# 2.1| Con datos atípicos sin multicolinealidad ---------------------------
+`Tercer modelo` <- lm(formula = Salario ~ . - Juegos - Rotación - 
+                        `Índice de agresividad`, data = NBA) 
+summary(`Tercer modelo`)
+
+par(mfrow = c(3, 2))                # Entorno recomendado para el diagnóstico.
+plot(`Tercer modelo`, which = 1:6)
+par(mfrow = c(1, 1))                # Se regresa al entorno típico.
+
+# 2.2| Sin datos atípicos ni multicolinealidad ----------------------------
+`Cuarto modelo` <- lm(formula = Salario ~ . - Juegos, data = NBA) 
+summary(`Tercer modelo`)
+
+par(mfrow = c(3, 2))                # Entorno recomendado para el diagnóstico.
+plot(`Cuarto modelo`, which = 1:6)
+par(mfrow = c(1, 1))                # Se regresa al entorno típico.
+
+# 3| Forma funcional adecuada ---------------------------------------------
+# 3.1| Con datos atípicos -------------------------------------------------
+RESET <- lm(formula = Salario ~ . - Juegos - Rotación - `Índice de agresividad` + 
+              I(fitted(`Tercer modelo`)^2) + I(fitted(`Tercer modelo`)^3), 
+            data = NBA)
+
+# Test RESET:
+linearHypothesis(RESET, matchCoefs(RESET, "fitted"))
+linearHypothesis(RESET, c("I(fitted(`Tercer modelo`)^2) = 0", 
+                          "I(fitted(`Tercer modelo`)^3) = 0"))
+resettest(`Tercer modelo`, power = 2:3, type = "fitted")
+
+# Corrección:
+`Quinto modelo` <- lm(formula = log(Salario) ~ . - Juegos - Rotación - 
+                        `Índice de agresividad`, 
+                      data = NBA)
+RESET <- lm(formula = log(Salario) ~ . - Juegos - Rotación - 
+              `Índice de agresividad` + I(fitted(`Quinto modelo`)^2) + 
+              I(fitted(`Quinto modelo`)^3), 
+            data = NBA)
+resettest(`Quinto modelo`, power = 2:3, type = "fitted")
+
+par(mfrow = c(3, 2))                # Entorno recomendado para el diagnóstico.
+plot(`Quinto modelo`, which = 1:6)
+par(mfrow = c(1, 1))                # Se regresa al entorno típico.
+summary(`Quinto modelo`)
+
+# 4| Cambios estructurales ------------------------------------------------
+# 4.1| Gráfico CUSUM ------------------------------------------------------
+CUSUM <- efp(`Quinto modelo`, data = NBA, type = "OLS-CUSUM")
+plot(CUSUM, alpha = 0.05, 
+     main = "CUSUM", 
+     xlab = "Ln(Salario por hora)", 
+     ylab = "Proceso de fluctuación empírico")
+sctest(log(Salario) ~ Edad + `Minutos jugados` + Eficiencia + 
+         `Índice de confianza`, order.by = `Minutos jugados`, data = NBA, 
+       type = "Chow", point = 100)
+
+CUSUM <- Fstats(`Quinto modelo`, data = NBA)
+plot(CUSUM, alpha = 0.05,
+     main = "Maximización del estadístico", 
+     xlab = "Ln(Salario por hora)", 
+     ylab = "Estadístico F")
+lines(breakpoints(CUSUM))
+
+# 4.2| Creación de la matriz ----------------------------------------------
+Registro           <- as.data.frame(matrix(data = rep(0, (dim(NBA)[1]-40) * 2), 
+                                           ncol = 2))
+colnames(Registro) <- c("Observación", "p-value")
+for (i in 20:(dim(NBA)[1]-20)) {
+  Registro[i-19, 1] = i
+  Registro[i-19, 2] = sctest(log(Salario) ~ Edad + `Minutos jugados` + 
+                               Eficiencia + `Índice de confianza`, 
+                             order.by = `Minutos jugados`,
+                             data = NBA, 
+                             type = "Chow", point = i)[[2]]
+}
+
+# Análisis:
+Quiebre = Registro %>% filter(`p-value` == min(`p-value`))
+Quiebre = Registro %>% filter(`p-value` <= 0.05)
+Quiebre$Observación
+
+# Supuestos sobre el error ------------------------------------------------
+# 5| Homocedasticidad -----------------------------------------------------
+# 5.1| White --------------------------------------------------------------
+bptest(formula = log(Salario) ~ Edad + `Minutos jugados` + Eficiencia + 
+         `Índice de confianza`, 
+       varformula = ~ Edad * `Minutos jugados` + Edad * Eficiencia + 
+         Edad * `Índice de confianza`,
+       data = NBA)
+
+# 5.2| Breusch-Pagan ------------------------------------------------------
+bptest(formula = `Quinto modelo`, 
+       data = NBA)
+
+# 5.3| Mínimos cuadrados generalizados ------------------------------------
+NBA$Residuales     <- `Quinto modelo`$residuals
+Heterocedasticidad <- lm(Residuales^2 ~ Edad + `Minutos jugados` + Eficiencia + 
+                           `Índice de confianza`, 
+                         data = NBA)
+NBA$Varianza       <- exp(Heterocedasticidad$fitted.values)
+`Sexto modelo`     <- lm(log(Salario) ~ Edad + `Minutos jugados` + 
+                           Eficiencia + `Índice de confianza`, 
+                         weights = 1/sqrt(Varianza), data = NBA)
+summary(`Sexto modelo`)
+bptest(`Sexto modelo`)
+
+# 5.4| Varianza robusta ---------------------------------------------------
+vcov(`Quinto modelo`)
+vcovHC(`Quinto modelo`, "HC1")
+coeftest(`Quinto modelo`, vcov. = vcovHC(`Quinto modelo`, "HC1"))
+
+# 6| Autocorrelación ------------------------------------------------------
+dwtest(`Quinto modelo`)
+bgtest(`Quinto modelo`)
+
+coeftest(`Quinto modelo`, vcov. = vcovAC(`Quinto modelo`))
+coeftest(`Quinto modelo`, vcov. = vcovHAC(`Quinto modelo`))
+
+# 7| Normalidad -----------------------------------------------------------
+
