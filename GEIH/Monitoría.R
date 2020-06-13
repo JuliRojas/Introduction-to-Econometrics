@@ -23,7 +23,7 @@ library(gdata)
 library(stargazer)
 
 # Bases de datos ----------------------------------------------------------
-setwd("C:/Users/judro/OneDrive/Documentos/GitHub/Introduction-to-Econometrics/GEIH")
+setwd("C:/Users/judro/Documents/GitHub/Introduction-to-Econometrics/GEIH")
 CaracterísticasGenerales <- read_delim("Area_Caracteristicas_Generales_Personas.csv", 
                                        ";", escape_double = FALSE, trim_ws = TRUE)
 CaracterísticasOcupados <- read_delim("Area_Ocupados.csv", ";", 
